@@ -74,17 +74,93 @@ The constructors available for the resulting goals are `Sorted.nil`,
 `Sorted.single`, and `Sorted.cons`. Case analysis on a sortedness proof
 can also tell you about the head elements of its list.
 -/
-theorem insert_sorted (a : Nat) (l : List Nat) (h : Sorted l) :
-    Sorted (insert a l) := by
-  sorry
-
+theorem insert_sorted (i : Nat) (l : List Nat) (h : Sorted l) :
+    Sorted (insert i l) := by
+  induction h with
+  | nil =>
+    rw [insert]
+    apply Sorted.single
+  | single x =>
+    rw [insert]
+    by_cases hle : i ≤ x
+    · rw [ite_eq_left hle]
+      apply Sorted.cons
+      exact hle
+      apply Sorted.single
+    · rw [ite_eq_right hle]
+      rw [insert]
+      apply Sorted.cons
+      rw [Nat.not_le] at hle
+      apply Nat.le_of_lt hle
+      apply Sorted.single
+  | cons a b l' hab h ih =>
+    rw [insert]
+    by_cases hle : i ≤ a
+    · rw [ite_eq_left hle]
+      apply Sorted.cons
+      exact hle
+      apply Sorted.cons
+      exact hab
+      exact h
+    · rw [ite_eq_right hle]
+      rw [Nat.not_le] at hle
+      rw [insert] at ih ⊢
+      by_cases hle' : i ≤ b
+      · rw [ite_eq_left hle'] at ih ⊢
+        apply Sorted.cons
+        apply Nat.le_of_lt hle
+        exact ih
+      · rw [ite_eq_right hle'] at ih ⊢
+        apply Sorted.cons
+        exact hab
+        exact ih
+  /- induction l generalizing i with -/
+  /- | nil => -- l is an empty list -/
+    /- rw [insert] -/
+    /- apply Sorted.single -/
+  /- | cons head tail ih => -- l is a cons -/
+    /- rw [insert] -/
+    /- by_cases hle : i ≤ head -/
+    /- · rw [ite_eq_left hle] -- i is less than head -/
+      /- apply Sorted.cons i head tail hle h -/
+    /- · rw [ite_eq_right hle] -- i is greater than head -/
+      /- cases h with -- cases on Sorted l -/
+      /- | single => -- singular means [head] -/
+        /- apply Sorted.cons head i -/
+        /- rw [Nat.not_le] at hle -/
+        /- apply Nat.le_of_lt hle -/
+        /- apply Sorted.single  -/
+      /- | cons head next l' hab h' => -/
+        /- rw [insert] -/
+        /- by_cases hle' : i ≤ next -/
+        /- · rw [ite_eq_left hle'] -/
+          /- apply Sorted.cons -/
+          /- rw [Nat.not_le] at hle -/
+          /- apply Nat.le_of_lt hle -/
+          /- have h'' := ih i h' -/
+          /- rw [insert, ite_eq_left hle'] at h'' -/
+          /- exact h'' -/
+        /- · rw [ite_eq_right hle'] -/
+          /- have h'' := ih i h' -/
+          /- rw [insert, ite_eq_right hle'] at h'' -/
+          /- apply Sorted.cons -/
+          /- exact hab -/
+          /- exact h'' -/
+        
 /-
 Exercise 2 (2 stars): sort_sorted
 
 Use list induction and Exercise 1.
 -/
 theorem sort_sorted (l : List Nat) : Sorted (sort l) := by
-  sorry
+  induction l with
+  | nil =>
+    rw [sort]
+    apply Sorted.nil
+  | cons a b ih =>
+    rw [sort]
+    apply insert_sorted
+    exact ih
 
 /-
 Exercise 3 (3 stars): insert_perm
@@ -97,7 +173,17 @@ it relates `b :: a :: l` to `a :: b :: l`.
 -/
 theorem insert_perm (a : Nat) (l : List Nat) :
     List.Perm (a :: l) (insert a l) := by
-  sorry
+  induction l with
+  | nil => rfl
+  | cons head tail ih =>
+    rw [insert]
+    by_cases h : a ≤ head
+    · rw [ite_eq_left h]
+    · rw [ite_eq_right h]
+      -- (a :: head :: tail) ~ (head :: a :: tail) ~ (head :: insert a tail)
+      have hperm  := List.Perm.cons head ih
+      have hperm' := List.Perm.swap head a tail
+      apply List.Perm.trans hperm' hperm 
 
 /-
 Exercise 4 (3 stars): sort_perm
@@ -105,7 +191,14 @@ Exercise 4 (3 stars): sort_perm
 Combine the induction hypothesis with Exercise 3 using transitivity.
 -/
 theorem sort_perm (l : List Nat) : List.Perm l (sort l) := by
-  sorry
+  induction l with
+  | nil => rfl
+  | cons head tail ih =>
+    rw [sort]
+    -- (head :: tail) ~ (head :: sort tail) ~ (insert head (sort tail))
+    have hperm := insert_perm head (sort tail)
+    have hperm' := List.Perm.cons head ih
+    apply List.Perm.trans hperm' hperm
 
 /-
 Exercise 5 (1 star): insertion_sort_correct
@@ -113,7 +206,11 @@ Exercise 5 (1 star): insertion_sort_correct
 Assemble the two properties in the contract.
 -/
 theorem insertion_sort_correct : IsSortingAlgorithm sort := by
-  sorry
+  rw [IsSortingAlgorithm]
+  intro l
+  constructor
+  · apply sort_perm
+  · apply sort_sorted
 
 /-! ## Part 3: Compare specifications (advanced) -/
 
